@@ -1,0 +1,138 @@
+PROBLEM: A crime has taken place and the detective needs your help. The detective gave you the crime scene report, but you somehow lost it. You vaguely remember that the crime was a ​murder​ that occurred sometime on ​Jan.15, 2018​ and that it took place in ​SQL City​. Start by retrieving the corresponding crime scene report from the police department’s database.
+
+All the clues to this mystery are buried in a huge database, and you need to use SQL to navigate through this vast network of information. Your first step to solving the mystery is to retrieve the corresponding crime scene report from the police department’s database. Below we'll explain from a high level the commands you need to know; whenever you are ready, you can start adapting the examples to create your own SQL commands in search of clues -- you can run any SQL in any of the code boxes, no matter what was in the box when you started.
+
+
+
+
+
+
+/*First, using the available information I queried the crime scene report 
+filter down to SQL city and crime type to get more infomation on the witness*/
+
+SELECT *
+FROM CRIME_SCENE_REPORT
+WHERE type = 'murder' AND city ='SQL City';
+
+-- Next, I followed my first lead(the witness) to get the report of their eye witness account
+
+SELECT *
+FROM person
+WHERE name LIKE'%Annabel%' AND address_street_name = 'Franklin Ave' 
+ORDER BY address_number DESC;
+
+SELECT *
+FROM person
+WHERE address_street_name ='Northwestern Dr'
+ORDER BY address_number DESC
+LIMIT 1;
+
+/* Then I joined both persons and interview table
+using the person_id of our witnesses to get the transcript of the eye witness report*/
+
+SELECT *
+FROM interview i
+join person p
+ON i.person_id = p.id
+WHERE id IN (16371,14887);
+
+/*I heard a gunshot and then saw a man run out. He had a "Get Fit Now Gym" bag.
+The membership number on the bag started with "48Z". Only gold members have those bags. 
+The man got into a car with a plate that included "H42W".
+
+I saw the murder happen, and I recognized the killer from my gym when I was working out 
+last week on January the 9th.*/
+
+
+
+SELECT * 
+FROM Get_fit_now_member
+WHERE id LIKE '%48Z%' AND membership_status = 'gold';
+
+--From our first witness we have been able to narrow down our search to two suspects
+--Next we will use the join tables
+
+SELECT *
+FROM Get_fit_now_member g
+JOIN person p
+ON g.person_id = p.id
+JOIN drivers_license d
+ON d.id =p.license_id
+WHERE g.person_id IN (67318,28819)
+AND plate_number LIKE '%H42W%';
+
+/*Now we will need to cross check witness 1 description with the 
+gym attendance of our suspect on 9th January based on witness 2 report*/
+
+SELECT *
+FROM get_fit_now_check_in
+WHERE membership_id = '48Z55';
+
+--We found our first suspect 'JEREMY BOWERS' as he fits into the description
+
+SELECT * 
+FROM Get_fit_now_member
+WHERE id LIKE '%48Z%' AND membership_status = 'gold';
+
+SELECT *
+FROM get_fit_now_check_in
+WHERE membership_id = '48Z7A';
+
+--Next, we will also use the vehicle registration to verify our suspect using joins
+
+SELECT *
+FROM Get_fit_now_member g
+JOIN person p
+ON g.person_id = p.id
+JOIN drivers_license d
+ON d.id =p.license_id
+WHERE g.person_id IN ('67318', '28819')
+AND plate_number LIKE '%H42W%';
+
+
+/*SELECT person_id, count(*)
+FROM facebook_event_checkin
+WHERE date between 20171201 and 20171231
+AND event_name = 'SQL Symphony Concert'
+GROUP BY person_id
+HAVING count(person_id) >= 3;*/
+
+
+-- Lets look at the interview record for the suspect information to uncover the crime details
+
+SELECT *
+FROM interview
+WHERE person_id IN ( '28819', '67318');
+
+/*I was hired by a woman with a lot of money. I don't know her name but
+I know she's around 5'5" (65") or 5'7" (67"). She has red hair and she drives a
+Tesla Model S. I know that she attended the SQL Symphony Concert 3 times in December 2017.*/
+
+
+/*Next we will use joins and CTE to query the facebook event checkins, drivers license 
+ and persons table to identify the woman who hired the suspect*/
+ 
+ 
+WITH suspect_hire 
+AS (SELECT person_id, count(*)
+FROM facebook_event_checkin
+WHERE date between 20171201 and 20171231
+AND event_name = 'SQL Symphony Concert'
+GROUP BY person_id
+HAVING count(person_id) >= 3)
+
+SELECT *
+FROM drivers_license d
+JOIN person p
+ON d.id = p.license_id
+JOIN suspect_hire sh 
+ON p.id = sh.person_id
+WHERE d.car_make = 'Tesla' AND d.car_model LIKE '%S%' AND d.gender = 'female' 
+AND d.hair_color = 'red'
+--event_name = 'SQL Symphony Concert'
+AND d.height between 65 AND 67;
+
+THE MURDER IS MIRANDA PRIESTLY.
+
+
+
